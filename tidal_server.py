@@ -316,9 +316,9 @@ class TidePlotter(object):
         return png
 
 def main():
-    cherrypy.config.update({'server.socket_port': 9091,
-                            'server.socket_host': '0.0.0.0'})
-    #                        'environment': 'production'})
+    cherrypy.config.update({'server.socket_port': 7070,
+                            'server.socket_host': '0.0.0.0',
+                            'environment': 'production'})
     cherrypy.quickstart(TidePlotter())
 
 def test():
