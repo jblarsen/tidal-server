@@ -2,6 +2,12 @@
 __pycache__/
 *.py[cod]
 
+# Profiling output
+*.prof
+
+# ViM
+*.swp
+
 # C extensions
 *.so
 
