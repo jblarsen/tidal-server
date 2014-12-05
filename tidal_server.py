@@ -224,24 +224,39 @@ class TidalData(object):
 
     def load_stations(self, start=None, end=None):
         """Loads sea level data for all stations."""
-        datafiles = glob.glob(self.datadir + '/*')
+        datafiles = glob.glob(self.datadir + '/*.txt')
         datafiles.sort()
         basenames = map(os.path.basename, datafiles)
         names = [bn.split('20')[0] for bn in basenames]
         stations = {}
         for name in names:
-            #if name == 'Nuuk':
-            print('Loading %s' % name)
-            stations[name] = self.load_station(name)
+            if not name.isalpha():
+                msg = 'Invalid station name: %s' % name
+                raise cherrypy.HTTPError("403 Forbidden", msg)
+            filetemplate = self.datadir + '/%(name)s2015_16_10min.txt'
+            filename = filetemplate % {'name': name}
+            npzfile = filename + '.npz'
+            if os.path.isfile(npzfile):
+                print('Loading %s' % npzfile)
+                t, v = self.load_station_npz(npzfile)
+            else:
+                print('Loading %s' % filename)
+                t, v = self.load_station_ascii(filename)
+                # Store efficient version for subsequent server restarts
+                print('Saving %s' % npzfile)
+                np.savez(npzfile, t=t, v=v)
+            stations[name] = t, v
         return stations
 
-    def load_station(self, station, start=None, end=None):
+    def load_station_npz(self, filename):
         """Loads sea level data for a given station."""
-        if not station.isalpha():
-            msg = 'Invalid station name: %s' % station
-            raise cherrypy.HTTPError("403 Forbidden", msg)
-        filetemplate = self.datadir + '/%(station)s2015_16_10min.txt'
-        filename = filetemplate % {'station': station}
+        npzfile = np.load(filename)
+        t = npzfile['t']
+        v = npzfile['v']
+        return t, v
+
+    def load_station_ascii(self, filename, start=None, end=None):
+        """Loads sea level data for a given station."""
         t = []
         v = []
         offset = datetime.timedelta(hours=3)
@@ -270,7 +285,8 @@ class TidalData(object):
         return t, v
 
 class TidePlotter(object):
-    tidal_data = TidalData(datadir='data')
+    def __init__(self):
+        self.tidal_data = TidalData(datadir='data')
 
     @cherrypy.expose
     @mimetype("image/png")
@@ -298,9 +314,9 @@ class TidePlotter(object):
         return png
 
 def main():
-    cherrypy.config.update({'server.socket_port': 9090,
-                            'server.socket_host': '0.0.0.0',
-                            'environment': 'production'})
+    cherrypy.config.update({'server.socket_port': 9091,
+                            'server.socket_host': '0.0.0.0'})
+    #                        'environment': 'production'})
     cherrypy.quickstart(TidePlotter())
 
 def test():
