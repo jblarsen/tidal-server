@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# encoding: utf-8
 """
 Plots tide based sea level. We will maintain a separate GeoJSON file
 containing station names and positions.
