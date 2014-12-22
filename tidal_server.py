@@ -268,9 +268,6 @@ class TidalData(object):
             for line in infile:
                 #print line
                 ldate, ltime, ldata = line.split()
-                # NOTE: For testing we offset by one year (since we got data
-                # from 2015-2016)
-                ldate = ldate.replace('2015', '2014')
                 #ldatetime = datetime.datetime.strptime(ldate + ltime, '%d/%m/%Y%H:%M')
                 dtargs = map(int, [ldate[6:10], ldate[3:5], ldate[:2],
                          ltime[:2], ltime[3:5]])
