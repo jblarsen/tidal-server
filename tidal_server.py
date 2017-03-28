@@ -11,6 +11,7 @@ import glob
 import os.path
 import collections
 import math
+import re
 
 # External imports
 import cherrypy
@@ -212,8 +213,12 @@ class TidalData(object):
     def get_station(self, station, start, end, lang):
         """Returns station data in a dictionary."""
         t, v = self.stations[station]
-        istart = np.searchsorted(t, start, side='left')
-        iend = np.searchsorted(t, end, side='right')
+        istart = 0
+        if start != None:
+            istart = np.searchsorted(t, start, side='left')
+        iend = len(t)
+        if end != None:
+            iend = np.searchsorted(t, end, side='right')
         t = t[istart:iend]
         v = v[istart:iend]
         long_name = _('Sea level above lowest astronomical tide', lang)
@@ -229,13 +234,13 @@ class TidalData(object):
         datafiles = glob.glob(self.datadir + '/*.txt')
         datafiles.sort()
         basenames = map(os.path.basename, datafiles)
-        names = [bn.split('20')[0] for bn in basenames]
+        names = [bn.split('.')[0] for bn in basenames]
         stations = {}
         for name in names:
             if not name.isalpha():
                 msg = 'Invalid station name: %s' % name
                 raise cherrypy.HTTPError("403 Forbidden", msg)
-            filetemplate = self.datadir + '/%(name)s2015_16_10min.txt'
+            filetemplate = self.datadir + '/%(name)s.tmp.txt'
             filename = filetemplate % {'name': name}
             npzfile = filename + '.npz'
             if os.path.isfile(npzfile):
@@ -263,22 +268,21 @@ class TidalData(object):
         v = []
         offset = datetime.timedelta(hours=3)
         with open(filename, 'r') as infile:
-            # Skip header
-            infile.next()
             for line in infile:
-                #print line
-                ldate, ltime, ldata = line.split()
+                # Skip header lines
+                if not re.match(r"^\d{12,12}.*$", line):
+                    continue
+                ldate, ldata = line.split()
                 #ldatetime = datetime.datetime.strptime(ldate + ltime, '%d/%m/%Y%H:%M')
-                dtargs = map(int, [ldate[6:10], ldate[3:5], ldate[:2],
-                         ltime[:2], ltime[3:5]])
+                dtargs = map(int, [ldate[0:4], ldate[4:6], ldate[6:8],
+                                   ldate[8:10], ldate[10:12]])
                 ldatetime = datetime.datetime(*dtargs, tzinfo=pytz.UTC)
-                #ldatetime = datetime.datetime.strptime(ldate + ltime, '%d/%m/%Y%H:%M')
                 ldatetime += offset
-                #ldatetime = ldatetime.replace(tzinfo=pytz.UTC)
                 if start is None or start <= ldatetime:
                     if end is None or end >= ldatetime:
                         t.append(ldatetime)
-                        v.append(float(ldata))
+                        # Convert cm->m
+                        v.append(float(ldata)/100.0)
         t = np.array(t)
         v = np.array(v)
         return t, v
