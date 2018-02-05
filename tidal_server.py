@@ -292,6 +292,10 @@ class TidePlotter(object):
         self.tidal_data = TidalData(datadir='data')
 
     @cherrypy.expose
+    def status(self):
+        return 'OK'
+
+    @cherrypy.expose
     @mimetype("image/png")
     def index(self, station, start=None, end=None, nx=600, ny=400, tz=0, lang='en'):
         """Returns sea level plot."""
